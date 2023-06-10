@@ -5,7 +5,7 @@
 
 PremuNet can extract information from multiple views and combine them interactively through pre-training and ﬁne-tuning. The network consists of two branches: a Transformer-GNN branch that extracts SMILES and graph information, and a Fusion Net branch that extracts graph and conformation information, called PermuNet-L and PermuNet-H respectively. We employ masked self-supervised methods to enable the model to learn information fusion and achieve improved performance in downstream tasks.
 <div align="center">
-<img src="DrawGraph/totalmodel.png" alt="totalmodel" style="zoom:14%;" />
+<img width="2500" src="DrawGraph/totalmodel.png" alt="totalmodel" style="zoom:14%;" />
 </div>
 
 ## Dataset
