@@ -1,0 +1,81 @@
+global:
+  dataset_name: Freesolv
+  reset: false
+  save_model: true
+  train_log: true
+  dataset_type: regression
+  valid_func: RMSE
+  path_dir: '/hy-tmp/molecule_net/'  # GEOM 数据集位置
+
+train:
+  EPOCH: 120
+  BATCH_SIZE: 32
+  fingerprints: true
+  keep_seed: false
+  seed: 62347
+  split_type: scaffold # scaffold or random
+  random_epoch: 5
+  LR: 1e-4
+  fcn_lr: 1e-4
+  gnn_lr: 1e-4
+  unified_lr: 1e-3
+  task_num: 1
+  decay_gamma: 0.5
+  decay_step: 10
+  grad_clip: 20
+
+net:
+# =====================================================
+# 分子指纹和原子指纹参数
+# =====================================================
+  use_fingerprints_file: true
+  concat_two_fingerprints: true
+  use_rdkit_feature: False # 使用 rdkit 生成的 2d 特征
+  rdkit_feature_size: 200 # rdkit 生成的 2d 特征向量大小
+  fingerprints_catogory: trans # trans or traditional
+  fingerprints_size_trans: 1024 # tsfm分子指纹大小
+  fingerprints_size_ecfp: 1489 #  传统分子指纹大小
+
+  use_pretrained_atom_feature: True
+  pretrained_atom_feature_size: 256
+
+  tsfm_fp_weight_path: './model_weight/trfm_12_23000.pkl'
+  tsfm_atom_weight_path: './model_weight/trfm_new_ds_lr5_20_50000.pkl'
+# =====================================================
+# Premunet-L model
+# =====================================================
+  gnn_hidden_channels: 1024
+  gnn_out_channels: 1024
+  gnn_num_layers: 3
+  fpn_hidden_channels: 1024
+  fpn_mid_channels: 1024
+  fpn_out_channels: 1024
+  fcn_mid_channels: 1024
+  fcn_out_channels: 512
+  unified_out_channels: 512
+  use_random_conformer: true
+# =====================================================
+# 3D conformer
+# =====================================================
+  feature3D: GEOM # ETKDG, GeoMol, GeoDiff, MMFF, GEOM, none
+# =====================================================
+# model structure
+# =====================================================
+  # smile and graph based model
+  att_emb_dim: 128
+  raw_with_pos: true
+  drop_p: 0.0
+  gnn_dropout: 0.0
+  unified_dropout: 0.0
+  nheads: 4
+  aggr_type: 'sum' # attention, sum
+  attn_outsize: 64
+
+  # 3D-conformer based model
+  use_weight_from_file: True
+  mlp_hidden_size: 1024
+  mlp_layers: 2
+  latent_size: 256
+  use_layer_norm: False
+  unified_num_layers: 12
+  uni_checkpoint_path: './checkpoint/unified_checkpoint0415/checkpoint_20.pt'

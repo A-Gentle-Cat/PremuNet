@@ -1,0 +1,238 @@
+### Python template
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+#   For a library or package, you might want to ignore these files since the code is
+#   intended to run in multiple environments; otherwise, check them in:
+# .python-version
+
+# pipenv
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+#   install all needed dependencies.
+#Pipfile.lock
+
+# poetry
+#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
+#   This is especially recommended for binary packages to ensure reproducibility, and is more
+#   commonly ignored for libraries.
+#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
+#poetry.lock
+
+# pdm
+#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
+#pdm.lock
+#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
+#   in version control.
+#   https://pdm.fming.dev/#use-with-ide
+.pdm.toml
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
+#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
+#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
+#  and can be added to the global gitignore or merged into this file.  For a more nuclear
+#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
+#.idea/
+
+/DrawGraph/2023-02-07/
+/DrawGraph/2023-02-08/
+/DrawGraph/2023-03-26/
+/DrawGraph/2023-03-27/
+/DrawGraph/2023-03-28/
+/DrawGraph/2023-03-29/
+/DrawGraph/2023-03-30/
+/DrawGraph/2023-0204/
+/DrawGraph/2023-0205/
+/DrawGraph/2023-0206/
+/DrawGraph/2023-0207/
+/DrawGraph/FP-GNN_BBBP.png
+/DrawGraph/totalmodel.png
+/dataset/1DFeature/
+/dataset/3DFeature/
+/dataset/BACE/
+/dataset/BBBP/
+/dataset/clintox/
+/dataset/ESOL/
+/dataset/Freesolv/
+/dataset/HIV/
+/dataset/Lipophilicity/
+/dataset/moleculenet_ogb/
+/dataset/PreAtomFeature/
+/dataset/QM8/
+/dataset/QM9/
+/dataset/qm9_pyg/
+/dataset/sider/
+/dataset/tmp/
+/dataset/TOX21/
+/dataset/TOXCAST/
+/dataset/TUDataset/
+/dataset/ZINC_download/
+/dataset/moleculenet_ogb.zip
+/dataset/分子不同大类的数据集.png
+/TrainLogs/2023-2-3/
+/TrainLogs/2023-02-07/
+/TrainLogs/2023-02-08/
+/TrainLogs/2023-03-02/
+/TrainLogs/2023-03-03/
+/TrainLogs/2023-03-04/
+/TrainLogs/2023-03-05/
+/TrainLogs/2023-03-06/
+/TrainLogs/2023-03-07/
+/TrainLogs/2023-03-08/
+/TrainLogs/2023-03-09/
+/TrainLogs/2023-03-10/
+/TrainLogs/2023-03-11/
+/TrainLogs/2023-03-12/
+/TrainLogs/2023-03-13/
+/TrainLogs/2023-03-14/
+/TrainLogs/2023-03-15/
+/TrainLogs/2023-03-20/
+/TrainLogs/2023-03-26/
+/TrainLogs/2023-03-27/
+/TrainLogs/2023-03-28/
+/TrainLogs/2023-03-29/
+/TrainLogs/2023-03-30/
+/TrainLogs/2023-03-31/
+/TrainLogs/2023-04-01/
+/TrainLogs/2023-04-02/
+/TrainLogs/2023-04-03/
+/TrainLogs/2023-04-04/
+/TrainLogs/2023-04-06/
+/TrainLogs/2023-04-07/
+/TrainLogs/2023-04-08/
+/TrainLogs/2023-04-09/
+/TrainLogs/2023-04-10/
+/TrainLogs/2023-04-13/
+/TrainLogs/2023-04-14/
+/TrainLogs/2023-04-15/
+/TrainLogs/2023-04-16/
+/TrainLogs/2023-0204/
+/TrainLogs/2023-0205/
+/TrainLogs/2023-0206/
+/TrainLogs/2023-0207/
