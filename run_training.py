@@ -332,12 +332,12 @@ def train(args, net, train_iter, valid_data, test_data, dataset_name, num_step=0
             if config.dataset_type == 'classification':
                 best_valid_res = max(history['ValidAUC'])
                 best_test_res = max(best_test_res, test_res[2])
-                print(f'测试集 Acc: {round(test_res[1], 5)} AUC: {round(test_res[2], 5)}')
-                write_to_trainlog(f'测试集 Acc: {round(test_res[1], 5)} AUC: {round(test_res[2], 5)}')
+                print(f'Test Acc: {round(test_res[1], 5)} AUC: {round(test_res[2], 5)}')
+                write_to_trainlog(f'Test Acc: {round(test_res[1], 5)} AUC: {round(test_res[2], 5)}')
                 test_his.append(test_res[2])
             else:
-                print(f'测试集 {config.valid_metrics}: {round(test_res[1], 5)}')
-                write_to_trainlog(f'测试集 {config.valid_metrics}: {round(test_res[1], 5)}')
+                print(f'Test {config.valid_metrics}: {round(test_res[1], 5)}')
+                write_to_trainlog(f'Test {config.valid_metrics}: {round(test_res[1], 5)}')
 
         # if isinstance(net, Uni_Net):
         #     get_output_separate(net, test_data)
@@ -347,7 +347,7 @@ def train(args, net, train_iter, valid_data, test_data, dataset_name, num_step=0
     # if isinstance(net, Uni_Net):
     #     get_output_separate(net, test_data)
 
-    # 测试集保存历史记录
+    # Test result
     np.save('unified_schnet_auc', np.array(test_his))
 
     test_res = evaluate(net, loss, test_data)

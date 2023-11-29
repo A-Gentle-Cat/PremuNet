@@ -96,13 +96,10 @@ train_logpath = ''
 photo_path = f'./DrawGraph/{format_day}/{format_time}'
 # PNA
 deg = None
-# 模型保存
+# model save
 model_dir = f'./checkpoint/{format_day}'
-# config 保存
+# config save
 config_path = ''
-# with open(config_path, 'w') as f:
-#     yaml.dump(config_data, f)
-# 特征文件读入
 data_dir = ''
 tsfm_atom_fea = ''
 tsfm_fp = ''

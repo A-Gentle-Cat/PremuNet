@@ -40,7 +40,8 @@ def get_config(args):
     config.train_log = config.global_config['train_log']
     config.dataset_type = config.global_config['dataset_type']
     config.valid_metrics = config.global_config['valid_func']
-    config.root_dir = '/hy-tmp/molecule'
+    # config.root_dir = '/hy-tmp/molecule'
+    config.root_dir = os.getcwd()
     config.device = torch.device('cuda')
     config.path_dir = config.global_config['path_dir']
 
@@ -119,7 +120,7 @@ def get_config(args):
     else:
         config.fingerprints_size = config.fingerprints_size_trans
 
-    # log 路径
+    # log path
     config.cur = time.localtime(time.time())
     config.format_day = '%04d-%02d-%02d' % (config.cur.tm_year, config.cur.tm_mon, config.cur.tm_mday)
     config.format_time = '【%04d-%02d-%02d】%02d:%02d:%02d' % (
@@ -140,19 +141,19 @@ def get_config(args):
     # PNA
     config.deg = None
 
-    # 模型保存
+    # model save
     if not os.path.exists(f'./checkpoint/{config.format_day}'):
         os.mkdir(f'./checkpoint/{config.format_day}')
     config.model_dir = f'./checkpoint/{config.format_day}'
 
-    # config 保存
+    # config save
     if not os.path.exists(f'./TrainConfigs/{config.format_day}'):
         os.mkdir(f'./TrainConfigs/{config.format_day}')
     config.config_path = f'./TrainConfigs/{config.format_day}/{config.format_time}.yaml'
     with open(config.config_path, 'w') as f:
         yaml.dump(config.config_data, f)
 
-    # 特征文件读入
+    # feature file read-in
     os.chdir(config.root_dir)
     config.data_dir = f'./dataset/{config.dataset_name}/processed/'
     config.tsfm_atom_fea = f'{config.dataset_name}_tsfm_atom_fea_{config.feature3D}.pkl'
@@ -165,7 +166,7 @@ def get_config(args):
             os.path.join(config.data_dir, config.tsfm_fp)) and os.path.exists(
             os.path.join(config.data_dir, config.traditional_fp)) and os.path.join(
             os.path.join(config.data_dir, config.smi2index_file))):
-        print('警告：没有找到特征文件，需要先运行 pretrans_data.py 获取特征')
+        print('Error: no feature file found, need to run pretrans_data.py first to get features')
     else:
         with open(os.path.join(config.data_dir, config.tsfm_fp), 'rb') as f:
             config.tsfm_fp = pickle.load(f)
@@ -185,7 +186,7 @@ def get_config(args):
         f = open(f'./dataset/{config.dataset_name}/processed/{config.dataset_name}_pos3d_GeoMol_dict.pkl', 'rb')
         config.feature_3d = pickle.load(f)
     elif config.feature3D == 'GEOM':
-        f = open('/hy-tmp/molecule_net/summary.json', 'rb')
+        f = open(os.path.join(config.global_config['path_dir'], 'summary.json'), 'rb')
         drugs = json.load(f)
         ori_drugs_smiles = list(drugs.keys())
         config.feature_3d = {}

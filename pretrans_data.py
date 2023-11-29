@@ -12,7 +12,7 @@ import config
 from Utils.load_utils import load_smiles_and_label
 
 
-datasets = ['BBBP', 'BACE', 'clintox', 'TOX21', 'sider', 'HIV', 'ESOL', 'Freesolv', 'Lipophilicity']
+datasets = ['BBBP', 'BACE', 'clintox', 'TOX21', 'sider', 'ESOL', 'Freesolv', 'Lipophilicity']
 root = './dataset/'
 
 def get_config(dataset):
@@ -25,7 +25,6 @@ def get_config(dataset):
 
     # global
     config.dataset_type = config.global_config['dataset_type']
-    config.root_dir = '/hy-tmp/molecule'
     config.device = torch.device('cuda')
     config.path_dir = config.global_config['path_dir']
 
@@ -40,7 +39,8 @@ def get_config(dataset):
         f = open(f'./dataset/{config.dataset_name}/processed/{config.dataset_name}_pos3d_GeoMol_dict.pkl', 'rb')
         config.feature_3d = pickle.load(f)
     elif config.feature3D == 'GEOM':
-        f = open('/hy-tmp/molecule_net/summary.json', 'rb')
+        f = open(os.path.join(config.global_config['path_dir'], 'summary.json'), 'rb')
+        # f = open('/hy-tmp/molecule_net/summary.json', 'rb')
         drugs = json.load(f)
         ori_drugs_smiles = list(drugs.keys())
         config.feature_3d = {}
@@ -86,16 +86,11 @@ def start_pretrain(dataset_name):
             cur_pos = get_3d_conformer_rdkit_MMFF(mol, smiles)
         elif config.feature3D == 'GEOM':
             cur_pos = get_3d_conformer_GEOM(mol, smiles)
-            # if cur_pos is None:
-            #     print(f'未找到 3d 坐标，将尝试使用 MMFF 生成', smiles)
-            #     cur_pos = get_3d_conformer_rdkit_MMFF(mol, smiles)
             if cur_pos is None:
-                print('未能生成 3d 坐标, 使用随机分布坐标', smiles)
+                print('Fails to generate 3d coordinates, uses randomly distributed coordinates.', smiles)
                 cur_pos = get_3d_conformer_random(mol, smiles)
         else:
             cur_pos = None
-
-        # print(f'cur_pos: {cur_pos.shape}')
 
         pos_3d.append(cur_pos)
 

@@ -1,6 +1,7 @@
 #!/bin/sh
 
-your_python_path=/usr/local/miniconda3/envs/gnn/bin/python
+# change this !
+your_python_path=/usr/local/miniconda3/bin/python
 
 for dataset in BBBP BACE clintox sider ESOL Freesolv Lipophilicity TOX21 ;
 do

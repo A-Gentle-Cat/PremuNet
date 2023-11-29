@@ -71,7 +71,6 @@ def get_3d_conformer_GEOM(mol: Chem.Mol, ori_smiles) -> Union[torch.Tensor, None
     las_atomic_numbers = []
 
     for conformer in mols['conformers']:
-        # 检查顺序
         # atomic_numbers = np.array([atom.GetAtomicNum() for atom in conformer['rd_mol'].GetAtoms()])
         # for las_list in las_atomic_numbers:
         #     if not all(las_list == atomic_numbers):
