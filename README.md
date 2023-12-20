@@ -34,7 +34,12 @@ python pretrain_trfm.py
 #### For Graph-Level Pretrain
 The pre-training of Graph-Level Transformer can follow the introduction in [this link](https://github.com/DSPsleeporg/smiles-transformer).
 ### PremuNet-H
-PremuNet-H module, we used the code from [this link](https://github.com/teslacool/UnifiedMolPretrain), and the pre-training process can be completed according to their instructions.
+PremuNet-H module, we used the code from [this link](https://github.com/teslacool/UnifiedMolPretrain).
+You can consider using their code and steps for pre-training, or use our code with the following steps:
+```shell
+cd UnifiedMolPretrain
+python train.py --num-layers 12 --batch-size 128 --enable-tb --node-attn --use-bn --pred-pos-residual --mask-prob 0.25
+```
 ## Finetuning
 The configuration files for each dataset are located in the /configs directory. These parameters can be utilized directly as provided, or they can be modified as needed. The step for finetuning on MoleculeNet is as follows
 ### Step 1: Download Dataset
