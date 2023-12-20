@@ -1,5 +1,7 @@
 import os
 import argparse
+
+import pandas as pd
 import torch
 from torch_geometric.loader import DataLoader
 import torch.optim as optim
@@ -12,6 +14,7 @@ import io
 
 # from pretrain3d.data.OgbGraphPropPredDataset.dataset import OgbGraphPropPredDataset
 from pretrain3d.data.DCGraphPropPredDataset.dataset import DCGraphPropPredDataset
+from pretrain3d.data.DCGraphPropPredDataset.dataset_scaffold import DCGraphPropPredDatasetScaffold
 from pretrain3d.model.gnn import GNNet
 from torch.optim.lr_scheduler import LambdaLR
 from pretrain3d.utils.misc import WarmCosine, PreprocessBatch, WarmLinear
@@ -59,7 +62,7 @@ def train(model, device, train_loader, optimizer, scheduler, args, preprocessor,
     return {"loss": loss_accum / (step + 1)}
 
 
-def evaluate(model, device, loader, args, preprocessor, evaluator):
+def evaluate(model, device, loader, args, preprocessor, evaluator, category):
     model.eval()
     y_true = []
     y_pred = []
@@ -78,8 +81,13 @@ def evaluate(model, device, loader, args, preprocessor, evaluator):
     y_pred = torch.cat(y_pred, dim=0).numpy()
 
     input_dict = {"y_true": y_true, "y_pred": y_pred}
+
+    loss = F.binary_cross_entropy_with_logits(y_pred.to(torch.float32), y_true.to(torch.float32))
+    print(f'{category} Loss: {loss.detach().item()}')
+
     return evaluator.eval(input_dict)
 
+dataset_name = 'BACE'
 
 def main():
     parser = argparse.ArgumentParser()
@@ -95,18 +103,18 @@ def main():
     parser.add_argument("--mlp-layers", type=int, default=2)
     parser.add_argument("--use-layer-norm", action="store_true", default=False)
 
-    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--num-workers", type=int, default=2)
     parser.add_argument("--checkpoint-dir", type=str, default="")
 
     parser.add_argument("--log-interval", type=int, default=100)
-    parser.add_argument("--dropout", type=float, default=0.0)
+    parser.add_argument("--dropout", type=float, default=0.3)
     parser.add_argument("--encoder-dropout", type=float, default=0.0)
-    parser.add_argument("--pooler-dropout", type=float, default=0.0)
-    parser.add_argument("--lr", type=float, default=2e-5)
+    parser.add_argument("--pooler-dropout", type=float, default=0.1)
+    parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--layernorm-before", action="store_true", default=False)
-    parser.add_argument("--use-bn", action="store_true", default=False)
+    parser.add_argument("--use-bn", action="store_true", default=True)
     parser.add_argument("--weight-decay", type=float, default=1e-2)
     parser.add_argument("--beta2", type=float, default=0.999)
     parser.add_argument("--period", type=float, default=10)
@@ -115,16 +123,21 @@ def main():
 
     parser.add_argument("--use-face", action="store_true", default=False)
     parser.add_argument("--global-attn", action="store_true", default=False)
-    parser.add_argument("--node-attn", action="store_true", default=False)
+    parser.add_argument("--node-attn", action="store_true", default=True)
     parser.add_argument("--face-attn", action="store_true", default=False)
-    parser.add_argument("--grad-norm", type=float, default=None)
+    parser.add_argument("--grad-norm", type=float, default=1.0)
     parser.add_argument("--random-rotation", action="store_true", default=False)
     parser.add_argument("--local_rank", type=int, default=0)
 
     parser.add_argument("--pred-pos-residual", action="store_true", default=False)
     parser.add_argument("--raw-with-pos", action="store_true", default=False)
     parser.add_argument("--finetune-from", type=str, default=None)
-    parser.add_argument("--dataset", type=str, default="dc-bace")
+    # parser.add_argument("--finetune-from", type=str, default=None)
+    # if dataset_name == 'BBBP':
+    parser.add_argument("--dataset", type=str, default="dc-sider")
+    # else:
+    #     parser.add_argument("--dataset", type=str, default="dc-bace")
+
     parser.add_argument("--gradmultiply", type=float, default=0.1)
     parser.add_argument("--ap-hid-size", type=int, default=1024)
     parser.add_argument("--ap-mlp-layers", type=int, default=2)
@@ -139,12 +152,22 @@ def main():
     device = torch.device(args.device)
 
     if args.dataset.startswith("dc"):
-        dataset = DCGraphPropPredDataset(args.dataset)
+        # dataset = DCGraphPropPredDataset(args.dataset)
+        dataset = DCGraphPropPredDatasetScaffold(args.dataset)
     else:
         dataset = OgbGraphPropPredDataset(args.dataset)
-    split_idx = dataset.get_idx_split()
-    evaluator = Evaluator(args.dataset, dataset=dataset)
+    # split_idx = dataset.get_idx_split()
+    '''
+    在这里写新的 split_idx
+    '''
+    data_dir = f'/hy-tmp/molecule/dataset/sider/split/scaffold/'
+    train_idx = pd.read_csv(os.path.join(data_dir, 'train.csv.gz'), compression='gzip', header=None).values.T[0]
+    valid_idx = pd.read_csv(os.path.join(data_dir, 'valid.csv.gz'), compression='gzip', header=None).values.T[0]
+    test_idx = pd.read_csv(os.path.join(data_dir, 'test.csv.gz'), compression='gzip', header=None).values.T[0]
+    split_idx = {'train': train_idx, 'valid': valid_idx, 'test': test_idx}
+    print(f'训练集：{len(dataset[split_idx["train"]])} 验证集：{len(dataset[split_idx["valid"]])} 测试集：{len(dataset[split_idx["test"]])}')
 
+    evaluator = Evaluator(args.dataset, dataset=dataset)
     dataset_train = dataset[split_idx["train"]]
     if args.distributed:
         sampler_train = DistributedSampler(dataset_train)
@@ -200,7 +223,7 @@ def main():
         ap_mlp_layers=args.ap_mlp_layers,
     )
     model = GNNet(**shared_params).to(device)
-    print(model)
+    # print(model)
     if args.finetune_from is not None:
         assert os.path.exists(args.finetune_from)
         print(f"Load pre-trained model from {args.finetune_from}")
@@ -252,9 +275,9 @@ def main():
         )
 
         print("Evaluating...")
-        train_perf = evaluate(model, device, train_loader, args, preprocessor, evaluator)
-        valid_perf = evaluate(model, device, valid_loader, args, preprocessor, evaluator)
-        test_perf = evaluate(model, device, test_loader, args, preprocessor, evaluator)
+        train_perf = evaluate(model, device, train_loader, args, preprocessor, evaluator, 'train')
+        valid_perf = evaluate(model, device, valid_loader, args, preprocessor, evaluator, 'valid')
+        test_perf = evaluate(model, device, test_loader, args, preprocessor, evaluator, 'test')
         if args.checkpoint_dir:
             print(f"Setting {os.path.basename(os.path.normpath(args.checkpoint_dir))}...")
 

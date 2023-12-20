@@ -2,9 +2,9 @@ import os
 import os.path as osp
 import pickle
 import shutil
-from ..utils.graph import smiles2graphwithface
-from ..utils.torch_util import replace_numpy_with_torchtensor
-from ..utils.url import decide_download, download_url, extract_zip
+from pretrain3d.utils.graph import smiles2graphwithface
+from pretrain3d.utils.torch_util import replace_numpy_with_torchtensor
+from pretrain3d.utils.url import decide_download, download_url, extract_zip
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
@@ -19,7 +19,7 @@ from torch_geometric.data import InMemoryDataset
 from sklearn.model_selection import train_test_split
 
 
-from ..utils.gt import isomorphic_core
+from pretrain3d.utils.gt import isomorphic_core
 
 
 class PCQM4Mv2Dataset(InMemoryDataset):
@@ -69,14 +69,13 @@ class PCQM4Mv2Dataset(InMemoryDataset):
             exit(-1)
 
     def process(self):
-        sdf_file = "/hy-tmp/pcqm4m-v2-train.sdf"
+        sdf_file = "./dataset/pcqm4m-v2-train.sdf"
         sup = SDMolSupplier(sdf_file)
 
         print("读取sdf完成")
         print('开始生成smiles串')
         mol_list = []
         smiles_list = []
-        cnt = 0
         for i, mol in tqdm(enumerate(sup)):
             try:
                 self.smiles2graph(mol)
@@ -85,10 +84,7 @@ class PCQM4Mv2Dataset(InMemoryDataset):
                 continue
             smiles_list.append(Chem.MolToSmiles(mol))
             mol_list.append(mol)
-            cnt += 1
-            if cnt == 100:
-                break
-
+        
         print("生成smiles串完成")
         with open('./dataset/smiles_list.pkl', 'wb') as f:
             pickle.dump(smiles_list, f)
@@ -124,7 +120,7 @@ class PCQM4Mv2Dataset(InMemoryDataset):
             else:
                 mol = Chem.MolFromSmiles(smiles)
                 num_atoms = mol.GetNumAtoms()
-                pos = np.zeros((num_atoms, 3), dtype=np.float32)
+                pos = np.zeros((num_atoms, 3), dtype=np.float)
 
             graph = self.smiles2graph(mol)
 

@@ -1,5 +1,5 @@
 from rdkit import Chem
-from ..utils.features import atom_to_feature_vector, bond_to_feature_vector
+from pretrain3d.utils.features import atom_to_feature_vector, bond_to_feature_vector
 import numpy as np
 
 

@@ -1,10 +1,10 @@
-import numpy as np
+from numpy.lib.shape_base import _put_along_axis_dispatcher
 import torch
 from torch import nn
+from torch import random
 from torch_geometric.nn import global_add_pool, global_mean_pool, global_max_pool
-
-from ..data.MolFeature import MolFeature
-from ..model.conv import (
+from pretrain3d.utils.features import get_atom_feature_dims, get_bond_feature_dims
+from pretrain3d.model.conv import (
     MLP,
     DropoutIfTraining,
     MetaLayer,
@@ -13,8 +13,7 @@ from ..model.conv import (
     MLPwoLastActwithselfBN,
 )
 import torch.nn.functional as F
-from ..utils.torch_util import GradMultiply
-from ..utils.PreProcessor import PreprocessBatch
+from pretrain3d.utils.torch_util import GradMultiply
 
 _REDUCER_NAMES = {"sum": global_add_pool, "mean": global_mean_pool, "max": global_max_pool}
 
@@ -32,7 +31,7 @@ class GNBlock(nn.Module):
         face_reducer: str = "sum",
         dropedge_rate: float = 0.1,
         dropnode_rate: float = 0.1,
-        use_face: bool = False,
+        use_face: bool = True,
         dropout: float = 0.1,
         layernorm_before: bool = False,
         encoder_dropout: float = 0.0,
@@ -94,13 +93,13 @@ class GNBlock(nn.Module):
                 MetaLayer(
                     edge_model=edge_model,
                     node_model=node_model,
-                    # face_model=face_model,
+                    face_model=face_model,
                     global_model=global_model,
                     aggregate_edges_for_node_fn=_REDUCER_NAMES[node_reducer],
                     aggregate_edges_for_globals_fn=_REDUCER_NAMES[global_reducer],
                     aggregate_nodes_for_globals_fn=_REDUCER_NAMES[global_reducer],
-                    # aggregate_edges_for_face_fn=_REDUCER_NAMES[face_reducer],
-                    # face_attn=face_attn,
+                    aggregate_edges_for_face_fn=_REDUCER_NAMES[face_reducer],
+                    face_attn=face_attn,
                     node_attn=node_attn,
                     global_attn=global_attn,
                     embed_dim=latent_size,
@@ -122,33 +121,18 @@ class GNBlock(nn.Module):
         edge_batch,
         num_nodes,
         num_edges,
+        face=None,
+        face_batch=None,
+        face_mask=None,
+        face_index=None,
+        num_faces=None,
+        nf_node=None,
+        nf_face=None,
         mode=None,
         pos=None,
-        smiles_list=None,
-        z=None
     ):
         pos_predictions = []
         last_pos_pred = x.new_zeros((x.shape[0], 3)).uniform_(-1, 1)
-
-        if mode not in ["mask", "mol2conf", "conf2mol"]:
-            import config
-            # 获取新的 pos
-            new_pos = []
-            conformer_idx = 0
-            cur_pos = None
-            for i in range(len(pos)):
-                if config.use_random_conformer:
-                    conformer_idx = np.random.randint(0, pos[i].shape[0])
-                # print(pos[i].shape)
-                for j in range(len(pos[i][conformer_idx])):
-                    cur_pos = pos[i][conformer_idx][j]
-                    new_pos.append(cur_pos)
-                    # print(cur_pos.shape)
-            pos = np.stack(new_pos, axis=0)
-            pos = torch.from_numpy(pos).to('cuda')
-            processor = PreprocessBatch()
-            pos = processor.process(pos=pos, batch=node_batch, n_nodes=num_nodes)
-
         pos_mask_idx = self.pos_embedding.get_mask_idx(pos, mode=mode)
         for layer in self.gnn_layers:
             extended_x, extended_edge_attr = self.pos_embedding(
@@ -159,32 +143,30 @@ class GNBlock(nn.Module):
                 last_pred=last_pos_pred,
                 mask_idx=pos_mask_idx,
                 mode=mode,
-                z=z,
-                batch=node_batch
             )
-            x_1, edge_attr_1, u_1 = layer(
+            x_1, edge_attr_1, u_1, face_1 = layer(
                 extended_x,
                 edge_index,
                 extended_edge_attr,
                 u,
                 node_batch,
                 edge_batch,
-                # face_batch,
-                # face,
-                # face_mask,
-                # face_index,
+                face_batch,
+                face,
+                face_mask,
+                face_index,
                 num_nodes,
-                # num_faces,
+                num_faces,
                 num_edges,
-                # nf_node,
-                # nf_face,
+                nf_node,
+                nf_face,
                 mode=mode,
             )
             x = F.dropout(x_1, p=self.dropout, training=self.training) + x
             edge_attr = F.dropout(edge_attr_1, p=self.dropout, training=self.training) + edge_attr
             u = F.dropout(u_1, p=self.dropout, training=self.training) + u
-            # if face is not None:
-            #     face = F.dropout(face_1, p=self.dropout, training=self.training) + face
+            if face is not None:
+                face = F.dropout(face_1, p=self.dropout, training=self.training) + face
 
             if self.pred_pos_residual:
                 delta_pos = self.pos_decoder(x)
@@ -195,7 +177,7 @@ class GNBlock(nn.Module):
 
             pos_predictions.append(last_pos_pred)
 
-        return x, edge_attr, u, pos_predictions, pos_mask_idx
+        return x, edge_attr, face, u, pos_predictions, pos_mask_idx
 
     def move2origin(self, pos, node_batch, num_nodes):
         pos_mean = global_mean_pool(pos, node_batch)
@@ -205,40 +187,40 @@ class GNBlock(nn.Module):
 class GNNet(nn.Module):
     def __init__(
         self,
-        mlp_hidden_size: int = 1024,
+        mlp_hidden_size: int = 512,
         mlp_layers: int = 2,
-        latent_size: int = 256,
+        latent_size: int = 2,
         use_layer_norm: bool = False,
-        num_message_passing_steps: int = 12,
-        global_reducer: str = "mean",
-        node_reducer: str = "mean",
-        face_reducer: str = "mean",
-        dropedge_rate: float = 0.0,
-        dropnode_rate: float = 0.0,
+        num_message_passing_steps: int = 8,
+        global_reducer: str = "sum",
+        node_reducer: str = "sum",
+        face_reducer: str = "sum",
+        dropedge_rate: float = 0.1,
+        dropnode_rate: float = 0.1,
         use_face: bool = False,
-        dropout: float = 0.0,
-        graph_pooling: str = "mean",
+        dropout: float = 0.1,
+        graph_pooling: str = "sum",
         layernorm_before: bool = False,
         encoder_dropout: float = 0.0,
         pooler_dropout: float = 0.0,
-        use_bn: bool = True,
+        use_bn: bool = False,
         global_attn: bool = False,
-        node_attn: bool = True,
+        node_attn: bool = False,
         face_attn: bool = False,
         mask_prob: float = 0.15,
         pos_mask_prob: float = 0.15,
-        pred_pos_residual: bool = True,
-        raw_with_pos: bool = True,
-        attr_predict: bool = True,
-        ap_hid_size: int = 1024,
-        ap_mlp_layers: int = 2,
+        pred_pos_residual: bool = False,
+        raw_with_pos: bool = False,
+        attr_predict: bool = False,
+        num_tasks: int = 0,
+        ap_hid_size: int = None,
+        ap_mlp_layers: int = None,
         gradmultiply: float = 0.1,
-        num_tasks: int = 1,
     ):
         super().__init__()
         self.latent_size = latent_size
         self.encoder_edge = MLP(
-            sum(MolFeature.get_bond_feature_dims_list()),
+            sum(get_bond_feature_dims()),
             [mlp_hidden_size] * mlp_layers + [latent_size],
             use_layer_norm=use_layer_norm,
         )
@@ -323,47 +305,43 @@ class GNNet(nn.Module):
             del checkpoint[k]
 
         for k, v in self.state_dict().items():
-            if "attr_decoder" in k or "pos_embedding_schnet" in k:
+            if "attr_decoder" in k:
                 print(f"Randomly init {k}...")
                 checkpoint[k] = v
         super().load_state_dict(checkpoint)
 
-    def forward(self, batch, output_no_pos=False, output_no_attr=False, mode="raw"):
-        batch = batch.to('cuda')
+    def forward(self, batch, output_no_pos=False, output_no_attr=False, mode="mask"):
         (
             x,
             edge_index,
             edge_attr,
             node_batch,
-            # face_mask,
-            # face_index,
+            face_mask,
+            face_index,
             num_nodes,
-            # num_faces,
+            num_faces,
             num_edges,
             num_graphs,
-            # nf_node,
-            # nf_face,
+            nf_node,
+            nf_face,
             pos,
         ) = (
             batch.x,
             batch.edge_index,
             batch.edge_attr,
             batch.batch,
-            # batch.ring_mask,
-            # batch.ring_index,
+            batch.ring_mask,
+            batch.ring_index,
             batch.n_nodes,
-            # batch.num_rings,
+            batch.num_rings,
             batch.n_edges,
             batch.num_graphs,
-            # batch.nf_node.view(-1),
-            # batch.nf_ring.view(-1),
+            batch.nf_node.view(-1),
+            batch.nf_ring.view(-1),
             batch.pos,
         )
-        if mode not in ["mask", "mol2conf", "conf2mol"]:
-            smiles_list = batch.smiles
-
         x, attr_mask_index = self.node_embedding(x, mode=mode)
-        # edge_attr = one_hot_bonds(edge_attr)
+        edge_attr = one_hot_bonds(edge_attr)
         edge_attr = self.encoder_edge(edge_attr)
         edge_attr = self.node_embedding.update_edge_feat(
             edge_attr, edge_index, attr_mask_index, mode=mode
@@ -373,26 +351,26 @@ class GNNet(nn.Module):
         edge_batch = torch.repeat_interleave(graph_idx, num_edges, dim=0)
         u = self.global_init.expand(num_graphs, -1)
 
-        # if self.use_face:
-        #     face_batch = torch.repeat_interleave(graph_idx, num_faces, dim=0)
-        #     node_attributes = self.aggregate_edges_for_face_fn(
-        #         x[nf_node], nf_face, size=num_faces.sum().item()
-        #     )
-        #     sent_attributes = self.aggregate_edges_for_face_fn(
-        #         edge_attr, face_index[0], size=num_faces.sum().item()
-        #     )
-        #     received_attributes = self.aggregate_edges_for_face_fn(
-        #         edge_attr, face_index[1], size=num_faces.sum().item()
-        #     )
-        #     feat = torch.cat([node_attributes, sent_attributes, received_attributes], dim=1)
-        #     feat = torch.where(face_mask.unsqueeze(1), feat.new_zeros((feat.shape[0], 1)), feat)
-        #     face = self.encoder_face(feat)
-        # else:
-        # face = None
-        # face_batch = None
-        # face_index = None
+        if self.use_face:
+            face_batch = torch.repeat_interleave(graph_idx, num_faces, dim=0)
+            node_attributes = self.aggregate_edges_for_face_fn(
+                x[nf_node], nf_face, size=num_faces.sum().item()
+            )
+            sent_attributes = self.aggregate_edges_for_face_fn(
+                edge_attr, face_index[0], size=num_faces.sum().item()
+            )
+            received_attributes = self.aggregate_edges_for_face_fn(
+                edge_attr, face_index[1], size=num_faces.sum().item()
+            )
+            feat = torch.cat([node_attributes, sent_attributes, received_attributes], dim=1)
+            feat = torch.where(face_mask.unsqueeze(1), feat.new_zeros((feat.shape[0], 1)), feat)
+            face = self.encoder_face(feat)
+        else:
+            face = None
+            face_batch = None
+            face_index = None
 
-        x, edge_attr, u, pos_predictions, pos_mask_idx = self.gnn_layers(
+        x, edge_attr, face, u, pos_predictions, pos_mask_idx = self.gnn_layers(
             x=x,
             edge_index=edge_index,
             edge_attr=edge_attr,
@@ -401,17 +379,15 @@ class GNNet(nn.Module):
             edge_batch=edge_batch,
             num_nodes=num_nodes,
             num_edges=num_edges,
-            # face=face,
-            # face_batch=face_batch,
-            # face_mask=face_mask,
-            # face_index=face_index,
-            # num_faces=num_faces,
-            # nf_node=nf_node,
-            # nf_face=nf_face,
+            face=face,
+            face_batch=face_batch,
+            face_mask=face_mask,
+            face_index=face_index,
+            num_faces=num_faces,
+            nf_node=nf_node,
+            nf_face=nf_face,
             mode=mode,
             pos=pos,
-            smiles_list=smiles_list,
-            z=batch.z
         )
         if self.attr_predict:
             x = self.pooling(x, node_batch, size=num_graphs)
@@ -669,7 +645,7 @@ class AtomEmbeddingwithMask(nn.Module):
         super().__init__()
         self.latent_size = latent_size
         self.encoder_node = MLP(
-            sum(MolFeature.get_atom_feature_dims_list()),
+            sum(get_atom_feature_dims()),
             [mlp_hidden_size] * mlp_layers + [latent_size],
             use_layer_norm=use_layernorm,
         )
@@ -709,7 +685,7 @@ class AtomEmbeddingwithMask(nn.Module):
         return self.mask_feature.expand(x.shape[0], -1), None
 
     def forward_attrs(self, x):
-        # x = one_hot_atoms(x)
+        x = one_hot_atoms(x)
         return self.encoder_node(x)
 
     def update_edge_feat(self, edge_attr, edge_index, attr_mask_index, mode="mask"):
@@ -729,12 +705,11 @@ class AtomEmbeddingwithMask(nn.Module):
 
 
 class PosEmbeddingwithMask(nn.Module):
-    def __init__(self, latent_size, mask_prob, raw_with_pos=True):
+    def __init__(self, latent_size, mask_prob, raw_with_pos=False):
         super().__init__()
         self.latent_size = latent_size
-        self.pos_embedding = MLP(3, [latent_size, latent_size], pos_drop=0.0)
-        # self.pos_embedding_schnet = SchNet(hidden_channels=latent_size, out_channels=latent_size)
-        self.dis_embedding = MLP(1, [latent_size, latent_size], pos_drop=0.0)
+        self.pos_embedding = MLP(3, [latent_size, latent_size])
+        self.dis_embedding = MLP(1, [latent_size, latent_size])
         self.mask_prob = mask_prob
         self.raw_with_pos = raw_with_pos
 
@@ -746,7 +721,7 @@ class PosEmbeddingwithMask(nn.Module):
         else:
             return None
 
-    def forward(self, pos, x, edge_attr, edge_index, last_pred=None, mask_idx=None, mode="mask", z=None, batch=None):
+    def forward(self, pos, x, edge_attr, edge_index, last_pred=None, mask_idx=None, mode="mask"):
         if mode == "mask":
             pos = self.mask(pos, last_pred, mask_idx)
         elif mode == "mol2conf":
@@ -756,10 +731,7 @@ class PosEmbeddingwithMask(nn.Module):
         elif mode == "raw":
             pos = self.raw(pos, last_pred, mask_idx)
 
-        # print(f'type x: {type(x)} type pos: {type(pos)} type posemb: {type(self.pos_embedding(pos))}')
-        # print(f'x.shape: {x.shape} pos.shape: {pos.shape} posemb.shape: {self.pos_embedding(pos).shape}')
         extended_x = x + self.pos_embedding(pos)
-        # extended_x = x + self.pos_embedding_schnet(z=z, batch=batch, pos=pos)
         row = edge_index[0]
         col = edge_index[1]
         sent_pos = pos[row]
@@ -779,7 +751,7 @@ class PosEmbeddingwithMask(nn.Module):
     def conf2mol(self, pos, last_pred, mask_idx):
         return pos
 
-    def raw(self, pos, last_pred: torch.Tensor, mask_idx):
+    def raw(self, pos, last_pred, mask_idx):
         if self.raw_with_pos:
             return pos
         else:
@@ -790,7 +762,7 @@ class MolDecoder(nn.Module):
     def __init__(self, latent_size, hidden_size, mlp_layers, use_bn, pooler_dropout):
         super().__init__()
         self.deocder_attrs = nn.ModuleList()
-        vocab_sizes = MolFeature.get_atom_feature_dims_list()
+        vocab_sizes = get_atom_feature_dims()
         for size in vocab_sizes:
             self.deocder_attrs.append(
                 MLPwoLastActwithselfBN(
@@ -810,7 +782,7 @@ class MolDecoder(nn.Module):
 
 
 def one_hot_bonds(bonds):
-    vocab_sizes = MolFeature.get_bond_feature_dims_list()
+    vocab_sizes = get_bond_feature_dims()
     one_hots = []
     for i in range(bonds.shape[1]):
         one_hots.append(F.one_hot(bonds[:, i], num_classes=vocab_sizes[i]).to(bonds.device))
@@ -818,7 +790,7 @@ def one_hot_bonds(bonds):
 
 
 def one_hot_atoms(atoms):
-    vocab_sizes = MolFeature.get_atom_feature_dims_list()
+    vocab_sizes = get_atom_feature_dims()
     one_hots = []
     for i in range(atoms.shape[1]):
         one_hots.append(F.one_hot(atoms[:, i], num_classes=vocab_sizes[i]).to(atoms.device))

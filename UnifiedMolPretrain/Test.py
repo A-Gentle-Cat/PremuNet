@@ -1,15 +1,10 @@
 from rdkit.Chem.rdmolfiles import SDMolSupplier
 from rdkit import Chem
+
+from pretrain3d.data.pcqm4m_lazy import PCQM4Mv2LasyDataset
 from pretrain3d.utils.graph import smiles2graphwithface
 from tqdm import tqdm
+from pretrain3d.utils.features import get_atom_feature_dims
 
-sdf_file = "/root/pcqm4m-v2-train.sdf"
-
-sup = SDMolSupplier(sdf_file)
-
-for i, mol in tqdm(enumerate(sup)):
-    fea = smiles2graphwithface(mol)
-
-# smi = "COP(=O)(OC)/C(F)=C(\C)F"
-#
-# fea = smiles2graphwithface(smi)
+dataset = PCQM4Mv2LasyDataset()
+print(dataset[0])

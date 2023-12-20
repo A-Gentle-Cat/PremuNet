@@ -12,34 +12,38 @@ class MetaLayer(nn.Module):
         self,
         edge_model=None,
         node_model=None,
-        # face_model=None,
+        face_model=None,
         global_model=None,
         aggregate_edges_for_node_fn=None,
         aggregate_edges_for_globals_fn=None,
         aggregate_nodes_for_globals_fn=None,
-        # aggregate_edges_for_face_fn=None,
+        aggregate_edges_for_face_fn=None,
         node_attn=False,
-        # face_attn=False,
+        face_attn=False,
         global_attn=False,
         embed_dim=None,
     ):
         super().__init__()
         self.edge_model = edge_model
         self.node_model = node_model
-        # self.face_model = face_model
+        self.face_model = face_model
         self.global_model = global_model
         self.aggregate_edges_for_node_fn = aggregate_edges_for_node_fn
         self.aggregate_edges_for_globals_fn = aggregate_edges_for_globals_fn
         self.aggregate_nodes_for_globals_fn = aggregate_nodes_for_globals_fn
-        # self.aggregate_edges_for_face_fn = aggregate_edges_for_face_fn
+        self.aggregate_edges_for_face_fn = aggregate_edges_for_face_fn
 
         if node_attn:
             self.node_attn = NodeAttn(embed_dim, num_heads=None)
         else:
             self.node_attn = None
 
-        self.face_node_attn = None
-        self.face_edge_attn = None
+        if face_attn and self.face_model is not None:
+            self.face_node_attn = GlobalAttn(embed_dim, num_heads=None)
+            self.face_edge_attn = GlobalAttn(embed_dim, num_heads=None)
+        else:
+            self.face_node_attn = None
+            self.face_edge_attn = None
 
         if global_attn and self.global_model is not None:
             self.global_node_attn = GlobalAttn(embed_dim, num_heads=None)
@@ -61,15 +65,15 @@ class MetaLayer(nn.Module):
         u: Optional[Tensor] = None,
         node_batch: Optional[Tensor] = None,
         edge_batch: Optional[Tensor] = None,
-        # face_batch: Optional[Tensor] = None,
-        # face: Optional[Tensor] = None,
-        # face_mask: Optional[Tensor] = None,
-        # face_index: Optional[Tensor] = None,
+        face_batch: Optional[Tensor] = None,
+        face: Optional[Tensor] = None,
+        face_mask: Optional[Tensor] = None,
+        face_index: Optional[Tensor] = None,
         num_nodes: Optional[Tensor] = None,
-        # num_faces: Optional[Tensor] = None,
+        num_faces: Optional[Tensor] = None,
         num_edges: Optional[Tensor] = None,
-        # nf_node: Optional[Tensor] = None,
-        # nf_face: Optional[Tensor] = None,
+        nf_node: Optional[Tensor] = None,
+        nf_face: Optional[Tensor] = None,
         mode: str = None,
     ):
         row = edge_index[0]
@@ -79,9 +83,9 @@ class MetaLayer(nn.Module):
             received_attributes = x[col]
             global_edges = torch.repeat_interleave(u, num_edges, dim=0)
             feat_list = [edge_attr, sent_attributes, received_attributes, global_edges]
-            # if face_index is not None:
-            #     feat_list.append(face[face_index[0]])
-            #     feat_list.append(face[face_index[1]])
+            if face_index is not None:
+                feat_list.append(face[face_index[0]])
+                feat_list.append(face[face_index[1]])
             edge_attr = self.edge_model(torch.cat(feat_list, dim=1), mode=mode)
 
         if self.node_model is not None:
@@ -96,40 +100,40 @@ class MetaLayer(nn.Module):
                 received_attributes = self.node_attn(x[col], x[row], edge_attr, col, max_node_id)
             global_nodes = torch.repeat_interleave(u, num_nodes, dim=0)
             feat_list = [x, sent_attributes, received_attributes, global_nodes]
-            # if face_index is not None:
-            #     face_attributes = self.aggregate_edges_for_node_fn(
-            #         face[nf_face], nf_node, size=max_node_id
-            #     )
-            #     feat_list.append(face_attributes)
+            if face_index is not None:
+                face_attributes = self.aggregate_edges_for_node_fn(
+                    face[nf_face], nf_node, size=max_node_id
+                )
+                feat_list.append(face_attributes)
             x = self.node_model(torch.cat(feat_list, dim=1), mode=mode)
 
-        # if self.face_model is not None:
-        #     assert face_index is not None
-        #     max_face_id = face.size(0)
-        #     if self.face_node_attn is None:
-        #         sent_attributes = self.aggregate_edges_for_face_fn(
-        #             edge_attr, face_index[0], size=max_face_id
-        #         )
-        #         received_attributes = self.aggregate_edges_for_face_fn(
-        #             edge_attr, face_index[1], size=max_face_id
-        #         )
-        #         node_attributes = self.aggregate_edges_for_face_fn(
-        #             x[nf_node], nf_face, size=max_face_id
-        #         )
-        #     else:
-        #         sent_attributes = self.face_edge_attn(
-        #             face[face_index[0]], edge_attr, face_index[0], max_face_id
-        #         )
-        #         received_attributes = self.face_edge_attn(
-        #             face[face_index[1]], edge_attr, face_index[1], max_face_id
-        #         )
-        #         node_attributes = self.face_node_attn(
-        #             face[nf_face], x[nf_node], nf_face, max_face_id
-        #         )
-        #     global_faces = torch.repeat_interleave(u, num_faces, dim=0)
-        #     feat_list = [face, sent_attributes, received_attributes, node_attributes, global_faces]
-        #     face = self.face_model(torch.cat(feat_list, dim=1), mode=mode)
-        #     face = torch.where(face_mask.unsqueeze(1), face.new_zeros((max_face_id, 1)), face)
+        if self.face_model is not None:
+            assert face_index is not None
+            max_face_id = face.size(0)
+            if self.face_node_attn is None:
+                sent_attributes = self.aggregate_edges_for_face_fn(
+                    edge_attr, face_index[0], size=max_face_id
+                )
+                received_attributes = self.aggregate_edges_for_face_fn(
+                    edge_attr, face_index[1], size=max_face_id
+                )
+                node_attributes = self.aggregate_edges_for_face_fn(
+                    x[nf_node], nf_face, size=max_face_id
+                )
+            else:
+                sent_attributes = self.face_edge_attn(
+                    face[face_index[0]], edge_attr, face_index[0], max_face_id
+                )
+                received_attributes = self.face_edge_attn(
+                    face[face_index[1]], edge_attr, face_index[1], max_face_id
+                )
+                node_attributes = self.face_node_attn(
+                    face[nf_face], x[nf_node], nf_face, max_face_id
+                )
+            global_faces = torch.repeat_interleave(u, num_faces, dim=0)
+            feat_list = [face, sent_attributes, received_attributes, node_attributes, global_faces]
+            face = self.face_model(torch.cat(feat_list, dim=1), mode=mode)
+            face = torch.where(face_mask.unsqueeze(1), face.new_zeros((max_face_id, 1)), face)
 
         if self.global_model is not None:
             n_graph = u.size(0)
@@ -138,10 +142,10 @@ class MetaLayer(nn.Module):
                 edge_attributes = self.aggregate_edges_for_globals_fn(
                     edge_attr, edge_batch, size=n_graph
                 )
-                # if face_index is not None:
-                #     face_attributes = self.aggregate_nodes_for_globals_fn(
-                #         face, face_batch, size=n_graph
-                #     )
+                if face_index is not None:
+                    face_attributes = self.aggregate_nodes_for_globals_fn(
+                        face, face_batch, size=n_graph
+                    )
             else:
                 node_attributes = self.global_node_attn(
                     torch.repeat_interleave(u, num_nodes, dim=0), x, node_batch, n_graph
@@ -149,16 +153,16 @@ class MetaLayer(nn.Module):
                 edge_attributes = self.global_edge_attn(
                     torch.repeat_interleave(u, num_edges, dim=0), edge_attr, edge_batch, n_graph
                 )
-                # if face_index is not None:
-                #     face_attributes = self.global_face_attn(
-                #         torch.repeat_interleave(u, num_faces, dim=1), face, face_batch, n_graph
-                #     )
+                if face_index is not None:
+                    face_attributes = self.global_face_attn(
+                        torch.repeat_interleave(u, num_faces, dim=1), face, face_batch, n_graph
+                    )
             feat_list = [u, node_attributes, edge_attributes]
-            # if face_index is not None:
-            #     feat_list.append(face_attributes)
+            if face_index is not None:
+                feat_list.append(face_attributes)
             u = self.global_model(torch.cat(feat_list, dim=1), mode=mode)
 
-        return x, edge_attr, u
+        return x, edge_attr, u, face
 
 
 class DropoutIfTraining(nn.Module):
@@ -190,10 +194,8 @@ class MLP(nn.Module):
         dropout=0.0,
         layernorm_before=False,
         use_bn=False,
-        pos_drop=0.0
     ):
         super().__init__()
-        self.drop = nn.Dropout(p=pos_drop)
         module_list = []
         if not use_bn:
             if layernorm_before:
@@ -227,7 +229,6 @@ class MLP(nn.Module):
     def forward(self, x):
         for item in self.module_list:
             x = item(x)
-            x = self.drop(x)
         return x
 
 

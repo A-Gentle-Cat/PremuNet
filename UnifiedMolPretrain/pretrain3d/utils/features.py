@@ -1,6 +1,4 @@
 # allowable multiple choice node and edge features
-from rdkit import Chem
-
 allowable_features = {
     "possible_atomic_num_list": list(range(1, 119)) + ["misc"],
     "possible_chirality_list": [
@@ -47,7 +45,7 @@ def safe_index(l, e):
 # assert allowable_features['possible_atomic_num_list'][i] == 2
 
 
-def atom_to_feature_vector(atom: Chem.Atom):
+def atom_to_feature_vector(atom):
     """
     Converts rdkit atom object to feature list of indices
     :param mol: rdkit atom object

@@ -10,6 +10,7 @@ from tqdm import tqdm
 import numpy as np
 import random
 from pretrain3d.data.pcqm4m import PCQM4Mv2Dataset
+from pretrain3d.data.pcqm4m_lazy import PCQM4Mv2LasyDataset
 from pretrain3d.model.gnn import GNNet
 from torch.optim.lr_scheduler import LambdaLR
 from pretrain3d.utils.misc import WarmCosine, PreprocessBatch
@@ -127,10 +128,10 @@ def main():
     parser.add_argument("--mlp-layers", type=int, default=2)
     parser.add_argument("--use-layer-norm", action="store_true", default=False)
 
-    parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--epochs", type=int, default=100)
     parser.add_argument("--num-workers", type=int, default=16)
-    parser.add_argument("--checkpoint-dir", type=str, default="/hy-tmp/molecule/UnifiedMolPretrain/pretrain_checkpoint")
+    parser.add_argument("--checkpoint-dir", type=str, default="/hy-tmp/unified/checkpoint")
 
     parser.add_argument("--log-interval", type=int, default=100)
     parser.add_argument("--dropout", type=float, default=0.0)
@@ -138,24 +139,24 @@ def main():
     parser.add_argument("--pooler-dropout", type=float, default=0.0)
     parser.add_argument("--lr", type=float, default=2e-4)
     parser.add_argument("--layernorm-before", action="store_true", default=False)
-    parser.add_argument("--use-bn", action="store_true", default=False)
+    parser.add_argument("--use-bn", action="store_true", default=True)
     parser.add_argument("--weight-decay", type=float, default=1e-2)
     parser.add_argument("--beta2", type=float, default=0.999)
     parser.add_argument("--period", type=float, default=10)
-    parser.add_argument("--enable-tb", action="store_true", default=False)
+    parser.add_argument("--enable-tb", action="store_true", default=True)
     parser.add_argument("--seed", type=int, default=42)
 
     parser.add_argument("--train-subset", action="store_true", default=False)
-    parser.add_argument("--mask-prob", type=float, default=0.15)
+    parser.add_argument("--mask-prob", type=float, default=0.25)
     parser.add_argument("--use-face", action="store_true", default=False)
     parser.add_argument("--global-attn", action="store_true", default=False)
-    parser.add_argument("--node-attn", action="store_true", default=False)
+    parser.add_argument("--node-attn", action="store_true", default=True)
     parser.add_argument("--face-attn", action="store_true", default=False)
     parser.add_argument("--grad-norm", type=float, default=None)
     parser.add_argument("--random-rotation", action="store_true", default=False)
     parser.add_argument("--local_rank", type=int, default=0)
 
-    parser.add_argument("--pred-pos-residual", action="store_true", default=False)
+    parser.add_argument("--pred-pos-residual", action="store_true", default=True)
     parser.add_argument("--raw-with-pos", action="store_true", default=False)
 
     parser.add_argument("--eval-from", type=str, default=None)
@@ -176,8 +177,11 @@ def main():
     device = torch.device(args.device)
     print("开始处理数据集")
     dataset = PCQM4Mv2Dataset()
+    # dataset = PCQM4Mv2LasyDataset()
 
     print("数据集处理完成")
+    print('第一个元素：', dataset[0])
+    print(f'数据集大小：{len(dataset)}')
     split_idx = dataset.get_idx_split(len(dataset))
 
     randperm = torch.randperm(len(split_idx["train"]))
@@ -191,10 +195,11 @@ def main():
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
 
     batch_sampler_train = torch.utils.data.BatchSampler(
-        sampler_train, args.batch_size, drop_last=True
+        sampler_train, args.batch_size, drop_last=False
     )
     train_loader = DataLoader(
-        dataset_train, batch_sampler=batch_sampler_train, num_workers=args.num_workers
+        dataset_train, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True, shuffle=True,
+        drop_last=True
     )
     valid_loader = DataLoader(
         dataset[dev_idxs], batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers
@@ -276,7 +281,7 @@ def main():
         args.checkpoint_dir = "" if args.rank != 0 else args.checkpoint_dir
         args.enable_tb = False if args.rank != 0 else args.enable_tb
         args.disable_tqdm = args.rank != 0
-    print(model_without_ddp)
+    # print(model_without_ddp)
     num_params = sum(p.numel() for p in model_without_ddp.parameters())
     print(f"#Params: {num_params}")
 
