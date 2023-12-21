@@ -31,6 +31,7 @@ To pretrain the Atome-Level Transformer, you can follow these steps:
 cd Transformer1D
 python pretrain_trfm.py
 ```
+Please note that you should prepare your own dataset for pre-training and modify parts of the code.
 #### For Graph-Level Pretrain
 The pre-training of Graph-Level Transformer can follow the introduction in [this link](https://github.com/DSPsleeporg/smiles-transformer).
 ### PremuNet-H
