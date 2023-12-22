@@ -3,6 +3,7 @@ import math
 import os
 import sys
 import pickle
+import time
 
 import numpy as np
 import pandas as pd
@@ -169,9 +170,9 @@ def main():
     print(model)
     print('Total parameters:', sum(p.numel() for p in model.parameters()))
 
-    # smiles = pd.read_csv(args.data)['smiles'].values
-    # smiles = [sme.randomize_smiles(smi) for smi in smiles]
-    smiles = np.load("/home/new_smiles.npy")
+    df = pd.read_csv(args.data, compression='gzip')
+    smiles = df['smiles'].values
+    print('load %d data' % (len(smiles)))
 
     dataset = SeqDataset(smiles, max_len=128, mask_prob=0.15)
     test_size = 10000
@@ -223,7 +224,9 @@ def main():
 
 
 if __name__ == "__main__":
-    log_file = open("message_lr5_new_ds.log", "w")
+    timestamp = int(time.time())
+    t = time.strftime('%Y-%m-%d-%H%M%S', time.localtime(timestamp))
+    log_file = open("message_lr5_new_ds_%s.log" % t, "w")
     sys.stdout = log_file
     try:
         main()

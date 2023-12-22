@@ -10,7 +10,8 @@ PremuNet can extract information from multiple views and combine them interactiv
 
 ## Dataset
 ### Dataset for pretraining.
-Our pre-training process employs both the ChEMBL and PCQM4M datasets. The ChEMBL dataset can be accessed through [this link](https://chembl.gitbook.io/chembl-interface-documentation/downloads), while the PCQM4M dataset is available for download [here](http://ogb-data.stanford.edu/data/lsc/pcqm4m-v2-train.sdf.tar.gz).
+Our pre-training process employs both the ChEMBL and PCQM4M datasets. The ChEMBL dataset can be accessed through [this link](https://chembl.gitbook.io/chembl-interface-documentation/downloads), 
+while the PCQM4M dataset is available for download [here](https://dgl-data.s3-accelerate.amazonaws.com/dataset/OGB-LSC/pcqm4m-v2.zip).
 ### Dataset for finetune
 We use MoleculeNet as our benchmark test. The datasets and splits of MoleculeNet in our experiment are available at [this link](http://snap.stanford.edu/ogb/data/graphproppred/csv_mol_download/). Download and unzip it into `/dataset`.
 
@@ -26,12 +27,14 @@ Please download them and put them in the `/model_weight` directory.
 If you want to train your own pre-training weights, you can refer to the following steps.
 ### SMILES-Transformer
 #### For Atom-Level Pretrain
-To pretrain the Atome-Level Transformer, you can follow these steps:
+**Step 1: Download PCQM4M Dataset**
+
+**Step 2:**
 ```shell
 cd Transformer1D
-python pretrain_trfm.py
+python pretrain_trfm.py --data /pcqm4m-v2/raw/data.csv.gz
 ```
-Please note that you should prepare your own dataset for pre-training and modify parts of the code.
+Note that you should replace parameter with your own data path.
 #### For Graph-Level Pretrain
 The pre-training of Graph-Level Transformer can follow the introduction in [this link](https://github.com/DSPsleeporg/smiles-transformer).
 ### PremuNet-H

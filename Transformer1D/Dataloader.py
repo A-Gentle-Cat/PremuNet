@@ -8,7 +8,7 @@ from torch.utils.data import Dataset, DataLoader
 from rdkit import Chem
 from rdkit.Chem import Draw
 
-from TransformerData.enumerator import SmilesEnumerator
+from SmilesEnumerator import SmilesEnumerator
 from utils.Smiles2token import smi_tokenizer
 
 
