@@ -23,7 +23,7 @@ pip install -r requirements.txt
 ```
 ## Pretrain
 The pretraining weights can be found at [this link](https://drive.google.com/drive/folders/16ANfFYW4uKYrBzn56v94hkAGu4yGg7tM?usp=share_link).
-Please download them and put them in the `/model_weight` directory.
+Please download them to the project root directory and unzip them.
 If you want to train your own pre-training weights, you can refer to the following steps.
 ### SMILES-Transformer
 #### For Atom-Level Pretrain

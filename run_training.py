@@ -228,7 +228,7 @@ def train(args, net, train_iter, valid_data, test_data, dataset_name, num_step=0
 
     for epoch in range(config.EPOCH):
         train_counter = Accumulator(5) if config.dataset_type == 'classification' else Accumulator(4)
-        data_iter = tqdm(train_iter)
+        data_iter = tqdm(train_iter, ncols=100)
         for X in data_iter:
             updater.zero_grad()
             y = torch.tensor(np.array(X.y), dtype=torch.float32).to(config.device)

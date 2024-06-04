@@ -13,8 +13,8 @@ import config
 class molDataset(pdata.InMemoryDataset):
     def __init__(self, dataset_name, catogory, args, enhance=False, lineGraph=False, reset=False):
         self.dataset_name = dataset_name
-        self.data_paths = f'./dataset/{self.dataset_name}/{self.dataset_name}.csv'
-        self.data_dir = f'./dataset/{self.dataset_name}/'
+        self.data_paths = os.path.join(config.dataset_dir, self.dataset_name, f'{self.dataset_name}.csv')
+        self.data_dir = f'{config.dataset_dir}/{self.dataset_name}/'
         self.lineGraph = lineGraph
         self.args = args
         self.enhance = enhance
@@ -31,7 +31,7 @@ class molDataset(pdata.InMemoryDataset):
 
     @property
     def raw_dir(self) -> str:
-        return f"./dataset/{self.dataset_name}/raw"
+        return f"{self.data_dir}/raw"
 
     @property
     def raw_file_names(self):
@@ -40,7 +40,7 @@ class molDataset(pdata.InMemoryDataset):
 
     @property
     def processed_dir(self) -> str:
-        return f'./dataset/{self.dataset_name}/processed'
+        return os.path.join(self.data_dir, 'processed')
 
     @property
     def processed_file_names(self) -> Union[str, List[str], Tuple]:
@@ -94,7 +94,7 @@ class molDataset(pdata.InMemoryDataset):
             # 查看是否有 GEOM 的文件
             pic_path = config.feature_3d.get(smiles)
             if pic_path is not None:
-                path = os.path.join(config.path_dir, pic_path)
+                path = os.path.join(config.dataset_dir, 'molecule_net', pic_path)
                 mols = pickle.load(open(path, 'rb'))
                 mol = mols['conformers'][0]['rd_mol']
             else:
@@ -123,7 +123,7 @@ class molDataset(pdata.InMemoryDataset):
             idx = i
             if config.pos_3d[idx] is None:
                 print(f'没有获取到 3d 坐标，将使用 0 初始化', smiles)
-                cur_pos = cur_node_feature.new_zeros((1, cur_node_feature.shape[0], 3)).uniform_(-1, 1)
+                cur_pos = cur_node_feature.new_zeros((cur_node_feature.shape[0], 3)).uniform_(-1, 1)
             else:
                 cur_pos = config.pos_3d[idx]
 

@@ -51,12 +51,19 @@ class Uni_Net(nn.Module):
     def __init__(self):
         super().__init__()
         self.fcgnn_model = FP_GNN_NET(predictor=False)
-        self.unified_model = GNNet(graph_pooling=config.graph_pooling,
-                                  global_reducer=config.global_reducer,
-                                  node_reducer=config.node_reducer,
-                                  dropout=config.unified_dropout,
+        self.unified_model = GNNet(num_message_passing_steps=12,
+                                   mlp_hidden_size=1024,
+                                   latent_size=256,
+                                   mlp_layers=2,
+                                   node_attn=True,
+                                   use_bn=True,
+                                   graph_pooling=config.graph_pooling,
+                                   global_reducer=config.global_reducer,
+                                   node_reducer=config.node_reducer,
+                                   dropout=config.unified_dropout,
                                    raw_with_pos=config.raw_with_pos,
-                                   num_tasks=config.unified_out_channels)
+                                   num_tasks=config.unified_out_channels,
+                                   attr_predict=True)
         self.act = torch.nn.ReLU()
         # self.ffn_out = nn.Sequential(
         #     nn.Linear(config.fcn_out_channels + config.unified_out_channels, 256),

@@ -20,7 +20,7 @@ dataset_type = ''
 valid_metrics = ''
 root_dir = '/hy-tmp/molecule'
 device = torch.device('cuda')
-path_dir = ''
+dataset_dir = ''
 
 # train
 train_config = ''

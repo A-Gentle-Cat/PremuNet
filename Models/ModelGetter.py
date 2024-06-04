@@ -26,7 +26,13 @@ def get_model(model_name):
         model = FP_GNN_NET(predictor=True)
     if model_name == 'PremuNet-H':
         if config.dataset_type == 'classification':
-            model = GNNet(graph_pooling=config.graph_pooling,
+            model = GNNet(num_message_passing_steps=12,
+                          mlp_hidden_size=1024,
+                          latent_size=256,
+                          mlp_layers=2,
+                          node_attn=True,
+                          use_bn=True,
+                          graph_pooling=config.graph_pooling,
                           global_reducer=config.global_reducer,
                           node_reducer=config.node_reducer,
                           dropout=0.0,
@@ -35,7 +41,13 @@ def get_model(model_name):
                           num_tasks=config.task_num,
                           raw_with_pos=config.raw_with_pos)
         else:
-            model = GNNet(graph_pooling=config.graph_pooling,
+            model = GNNet(num_message_passing_steps=12,
+                          mlp_hidden_size=1024,
+                          latent_size=256,
+                          mlp_layers=2,
+                          node_attn=True,
+                          use_bn=True,
+                          graph_pooling=config.graph_pooling,
                           global_reducer=config.global_reducer,
                           node_reducer=config.node_reducer,
                           num_tasks=config.task_num,
@@ -101,10 +113,10 @@ def get_model(model_name):
                            l_hid=config.hidden_size)
     if model_name == 'Tradi-FPN':
         model = FPN_Tradi(in_channals=config.fingerprints_size_ecfp,
-                      hidden_channals=config.fpn_hidden_channels,
-                      mid_channals=config.fpn_mid_channels,
-                      out_channals=config.task_num,
-                      drop_p=config.gnn_dropout)
+                          hidden_channals=config.fpn_hidden_channels,
+                          mid_channals=config.fpn_mid_channels,
+                          out_channals=config.task_num,
+                          drop_p=config.gnn_dropout)
     if model_name == 'ComENet':
         model = ComENet(out_channels=config.task_num)
     return model

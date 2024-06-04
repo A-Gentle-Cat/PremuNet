@@ -63,7 +63,7 @@ def get_3d_conformer_GEOM(mol: Chem.Mol, ori_smiles) -> Union[torch.Tensor, None
     pic_path = config.feature_3d.get(smiles)
     if pic_path is None:
         return None
-    path = os.path.join(config.path_dir, pic_path)
+    path = os.path.join(config.dataset_dir, 'molecule_net', pic_path)
     with open(path, 'rb') as f:
         mols = pickle.load(f)
     positions = []

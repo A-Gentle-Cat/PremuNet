@@ -1,3 +1,4 @@
+import argparse
 import json
 import os.path
 import pickle
@@ -11,11 +12,15 @@ from tqdm import tqdm
 import config
 from Utils.load_utils import load_smiles_and_label
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--dataset_dir', type=str, required=True, help='your dataset directory')
+args = parser.parse_args()
 
-datasets = ['BBBP', 'BACE', 'clintox', 'TOX21', 'sider', 'ESOL', 'Freesolv', 'Lipophilicity']
-root = './dataset/'
+# datasets = ['BBBP', 'BACE', 'clintox', 'TOX21', 'sider', 'ESOL', 'Freesolv', 'Lipophilicity']
+datasets = ['BACE']
+root = args.dataset_dir
 
-def get_config(dataset):
+def get_config(dataset, args):
     config.dataset_name = dataset
 
     with open(f'configs/{config.dataset_name}_config.yaml', 'rb') as f:
@@ -26,7 +31,7 @@ def get_config(dataset):
     # global
     config.dataset_type = config.global_config['dataset_type']
     config.device = torch.device('cuda')
-    config.path_dir = config.global_config['path_dir']
+    config.dataset_dir = args.dataset_dir if args.dataset_dir is not None else config.global_config['path_dir']
 
     config.tsfm_fp_weight_path = config.net_config['tsfm_fp_weight_path']
     config.tsfm_atom_weight_path = config.net_config['tsfm_atom_weight_path']
@@ -39,7 +44,7 @@ def get_config(dataset):
         f = open(f'./dataset/{config.dataset_name}/processed/{config.dataset_name}_pos3d_GeoMol_dict.pkl', 'rb')
         config.feature_3d = pickle.load(f)
     elif config.feature3D == 'GEOM':
-        f = open(os.path.join(config.global_config['path_dir'], 'summary.json'), 'rb')
+        f = open(os.path.join(config.dataset_dir, 'molecule_net', 'summary.json'), 'rb')
         # f = open('/hy-tmp/molecule_net/summary.json', 'rb')
         drugs = json.load(f)
         ori_drugs_smiles = list(drugs.keys())
@@ -54,15 +59,19 @@ def get_config(dataset):
 
 def start_pretrain(dataset_name):
     print(f'==================={dataset_name}===================')
-    get_config(dataset_name)
+    get_config(dataset_name, args)
 
     from Models.Transformer.Tsfm_interface import Get_Atom_Feature
     from FeatureDefine.Conformer3DFeature import get_3d_conformer_rdkit_ETKDG, get_3d_conformer_rdkit_MMFF, \
         get_3d_conformer_GeoMol, get_3d_conformer_GEOM, get_3d_conformer_random
     from FeatureDefine.FinerprintsFeature import getTraditionalFingerprintsFeature, getTSFMFingerprintsFeature
     data_dir = os.path.join(root, dataset_name)
-    csv_path = os.path.join(data_dir, 'mapping', 'mol.csv')
-    data = pd.read_csv(csv_path)
+    if os.path.exists(os.path.join(data_dir, 'mapping', 'mol.csv.gz')):
+        csv_path = os.path.join(data_dir, 'mapping', 'mol.csv.gz')
+        data = pd.read_csv(csv_path, compression='gzip')
+    else:
+        csv_path = os.path.join(data_dir, 'mapping', 'mol.csv')
+        data = pd.read_csv(csv_path)
 
     sm2index = {}
     tsfm_atom_fea = []
@@ -113,27 +122,28 @@ def start_pretrain(dataset_name):
     tsfm_fp = getTSFMFingerprintsFeature(smiles_list)
     traditional_fp = torch.stack(traditional_fp)
 
-    if not os.path.exists(f'./dataset/{dataset_name}/processed'):
-        os.mkdir(f'./dataset/{dataset_name}/processed')
+    processed_path = os.path.join(config.dataset_dir, dataset_name, 'processed')
+    if not os.path.exists(processed_path):
+        os.mkdir(processed_path)
 
     # atom feature
-    with open(f'./dataset/{dataset_name}/processed/{dataset_name}_tsfm_atom_fea_{config.feature3D}.pkl', 'wb') as f:
+    with open(f'{processed_path}/{dataset_name}_tsfm_atom_fea_{config.feature3D}.pkl', 'wb') as f:
         pickle.dump(tsfm_atom_fea, f)
     # transformer fingerprint
-    with open(f'./dataset/{dataset_name}/processed/{dataset_name}_tsfm_fp_{config.feature3D}.pkl', 'wb') as f:
+    with open(f'{processed_path}/{dataset_name}_tsfm_fp_{config.feature3D}.pkl', 'wb') as f:
         pickle.dump(tsfm_fp, f)
     # fingerprint
-    with open(f'./dataset/{dataset_name}/processed/{dataset_name}_traditional_fp_{config.feature3D}.pkl', 'wb') as f:
+    with open(f'{processed_path}/{dataset_name}_traditional_fp_{config.feature3D}.pkl', 'wb') as f:
         pickle.dump(traditional_fp, f)
     # index
-    with open(f'./dataset/{dataset_name}/processed/{dataset_name}_smi2index_{config.feature3D}.pkl', 'wb') as f:
+    with open(f'{processed_path}/{dataset_name}_smi2index_{config.feature3D}.pkl', 'wb') as f:
         pickle.dump(sm2index, f)
     # 3d position
     if config.feature3D != 'none':
-        with open(f'./dataset/{dataset_name}/processed/{dataset_name}_pos3d_{config.feature3D}.pkl', 'wb') as f:
+        with open(f'{processed_path}/{dataset_name}_pos3d_{config.feature3D}.pkl', 'wb') as f:
             pickle.dump(pos_3d, f)
     print(f'tsfm_fp.shape = {tsfm_fp.shape} tsfm_atom_fea.len = {len(tsfm_atom_fea)} tsfm_atom_fea[0].shape: {tsfm_atom_fea[0].shape} traditional_fea.shape = {traditional_fp.shape} pos3d.len = {len(pos_3d)} ')
-    print('data save to：', f'./dataset/{dataset_name}/processed')
+    print('data save to：', processed_path)
 
 
 if __name__ == '__main__':

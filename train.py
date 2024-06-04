@@ -23,6 +23,7 @@ def parse_arguments():
     parser.add_argument('--LR', type=float, default=None)
     parser.add_argument('--decay_gamma', type=float, default=None)
     parser.add_argument('--decay_step', type=float, default=None)
+    parser.add_argument('--dataset_dir', type=str, default=None)
 
     args = parser.parse_args()
     return args
@@ -43,7 +44,7 @@ def get_config(args):
     # config.root_dir = '/hy-tmp/molecule'
     config.root_dir = os.getcwd()
     config.device = torch.device('cuda')
-    config.path_dir = config.global_config['path_dir']
+    config.dataset_dir = args.dataset_dir if args.dataset_dir is not None else config.global_config['path_dir']
 
     # train
     config.train_config = config.config_data['train']
@@ -127,6 +128,8 @@ def get_config(args):
     config.cur.tm_year, config.cur.tm_mon, config.cur.tm_mday, config.cur.tm_hour, config.cur.tm_min, config.cur.tm_sec)
     config.format_time2 = '%02d:%02d:%02d' % (config.cur.tm_hour, config.cur.tm_min, config.cur.tm_sec)
     print(os.getcwd())
+    if not os.path.exists('./TrainLogs'):
+        os.mkdir('./TrainLogs')
     if config.train_log:
         if not os.path.exists(f'./TrainLogs/{config.format_day}'):
             os.mkdir(f'./TrainLogs/{config.format_day}')
@@ -142,11 +145,15 @@ def get_config(args):
     config.deg = None
 
     # model save
+    if not os.path.exists('./checkpoint'):
+        os.mkdir('./checkpoint')
     if not os.path.exists(f'./checkpoint/{config.format_day}'):
         os.mkdir(f'./checkpoint/{config.format_day}')
     config.model_dir = f'./checkpoint/{config.format_day}'
 
     # config save
+    if not os.path.exists('./TrainConfigs'):
+        os.mkdir('./TrainConfigs')
     if not os.path.exists(f'./TrainConfigs/{config.format_day}'):
         os.mkdir(f'./TrainConfigs/{config.format_day}')
     config.config_path = f'./TrainConfigs/{config.format_day}/{config.format_time}.yaml'
@@ -155,7 +162,7 @@ def get_config(args):
 
     # feature file read-in
     os.chdir(config.root_dir)
-    config.data_dir = f'./dataset/{config.dataset_name}/processed/'
+    config.data_dir = os.path.join(config.dataset_dir, f'{config.dataset_name}/processed/')
     config.tsfm_atom_fea = f'{config.dataset_name}_tsfm_atom_fea_{config.feature3D}.pkl'
     config.tsfm_fp = f'{config.dataset_name}_tsfm_fp_{config.feature3D}.pkl'
     config.traditional_fp = f'{config.dataset_name}_traditional_fp_{config.feature3D}.pkl'
@@ -166,7 +173,7 @@ def get_config(args):
             os.path.join(config.data_dir, config.tsfm_fp)) and os.path.exists(
             os.path.join(config.data_dir, config.traditional_fp)) and os.path.join(
             os.path.join(config.data_dir, config.smi2index_file))):
-        print('Error: no feature file found, need to run pretrans_data.py first to get features')
+        raise Exception(f'Error: no feature file found in {config.data_dir}, need to run pretrans_data.py first to get features')
     else:
         with open(os.path.join(config.data_dir, config.tsfm_fp), 'rb') as f:
             config.tsfm_fp = pickle.load(f)
@@ -176,7 +183,7 @@ def get_config(args):
             config.tsfm_atom_fea = pickle.load(f)
         with open(os.path.join(config.data_dir, config.smi2index_file), 'rb') as f:
             config.smi2index = pickle.load(f)
-        with open(f'./dataset/{config.dataset_name}/processed/{config.dataset_name}_pos3d_{config.feature3D}.pkl', 'rb') as f:
+        with open(f'{config.data_dir}/{config.dataset_name}_pos3d_{config.feature3D}.pkl', 'rb') as f:
             config.pos_3d = pickle.load(f)
 
     if config.feature3D == 'GeoDiff':
@@ -186,7 +193,7 @@ def get_config(args):
         f = open(f'./dataset/{config.dataset_name}/processed/{config.dataset_name}_pos3d_GeoMol_dict.pkl', 'rb')
         config.feature_3d = pickle.load(f)
     elif config.feature3D == 'GEOM':
-        f = open(os.path.join(config.global_config['path_dir'], 'summary.json'), 'rb')
+        f = open(os.path.join(config.dataset_dir, 'molecule_net', 'summary.json'), 'rb')
         drugs = json.load(f)
         ori_drugs_smiles = list(drugs.keys())
         config.feature_3d = {}
