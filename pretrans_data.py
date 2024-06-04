@@ -16,8 +16,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataset_dir', type=str, required=True, help='your dataset directory')
 args = parser.parse_args()
 
-# datasets = ['BBBP', 'BACE', 'clintox', 'TOX21', 'sider', 'ESOL', 'Freesolv', 'Lipophilicity']
-datasets = ['BACE']
+datasets = ['BBBP', 'BACE', 'clintox', 'TOX21', 'sider', 'ESOL', 'Freesolv', 'Lipophilicity']
 root = args.dataset_dir
 
 def get_config(dataset, args):

@@ -13,10 +13,10 @@ PremuNet can extract information from multiple views and combine them interactiv
 Our pre-training process employs both the ChEMBL and PCQM4M datasets. The ChEMBL dataset can be accessed through [this link](https://chembl.gitbook.io/chembl-interface-documentation/downloads), 
 while the PCQM4M dataset is available for download [here](https://dgl-data.s3-accelerate.amazonaws.com/dataset/OGB-LSC/pcqm4m-v2.zip).
 ### Dataset for finetune
-We use MoleculeNet as our benchmark test. The datasets and splits of MoleculeNet in our experiment are available at [this link](http://snap.stanford.edu/ogb/data/graphproppred/csv_mol_download/). Download and unzip it into `/dataset`.
+We use MoleculeNet as our benchmark test. The datasets and splits of MoleculeNet in our experiment are available at [this link](http://snap.stanford.edu/ogb/data/graphproppred/csv_mol_download/). Download and unzip it into your dataset directory.
 
 We have added 3D coordinates to the molecules in MoleculeNet to further improve prediction performance. The source for these 3D coordinates can be accessed via [here](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/JNGTDF). 
-You should download the `molecule_net.tar.gz` file. Unzip it and place it in the `/dataset` directory
+You should download the `molecule_net.tar.gz` file. Unzip it and place it in your dataset directory
 ## Setup Environment
 ```shell
 pip install -r requirements.txt
@@ -50,7 +50,7 @@ The configuration files for each dataset are located in the /configs directory. 
 You should unzip the downloaded dataset and place them separately under the `/dataset/` directory.
 ### Step 2: Get Molecular Feature
 ```shell
-python pretrans_data.py
+python pretrans_data.py --dataset_dir ${your dataset directory}
 ```
 ### Step 3: Start finetuning
 ```shell
